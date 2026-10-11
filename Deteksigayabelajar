@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deteksi Gaya Belajar Siswa (VAK)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (Excel/Sheet Download) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf.js (PDF Download) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen">
+
+    <!-- Header / Navbar -->
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-graduation-cap text-2xl text-yellow-300"></i>
+                <h1 class="text-xl font-bold tracking-wide">TesGayaBelajar.id</h1>
+            </div>
+            <button onclick="toggleLoginModal()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                <i class="fa-solid fa-user-lock"></i> Akses Guru BK
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto p-4 md:p-6 my-6">
+
+        <!-- VIEW 1: Form Data Siswa & Petunjuk -->
+        <div id="view-start" class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900 mb-2">Kuesioner Gaya Belajar Siswa</h2>
+                <p class="text-gray-600 text-sm md:text-base">Ketahui gaya belajar dominanmu: <span class="font-semibold text-indigo-600">Visual</span>, <span class="font-semibold text-emerald-600">Auditori</span>, atau <span class="font-semibold text-amber-600">Kinestetik</span>.</p>
+            </div>
+
+            <form id="form-biodata" onsubmit="startTest(event)" class="space-y-4 max-w-lg mx-auto">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nama Lengkap</label>
+                    <input type="text" id="nama-siswa" required placeholder="Masukkan nama lengkap" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Kelas / Rombel</label>
+                    <input type="text" id="kelas-siswa" required placeholder="Contoh: X IPA 1 / 10-A" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nomor Absen / NIS</label>
+                    <input type="text" id="nis-siswa" required placeholder="Masukkan nomor absen atau NIS" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-md transition duration-200 mt-4">
+                    Mulai Tes Sekarang <i class="fa-solid fa-arrow-right ml-2"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- VIEW 2: Pertanyaan Tes -->
+        <div id="view-test" class="hidden bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between text-xs md:text-sm font-semibold text-gray-500 mb-2">
+                    <span id="question-progress-text">Soal 1 dari 12</span>
+                    <span id="percentage-text">0% Selesai</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Pertanyaan -->
+            <div id="question-container" class="space-y-6">
+                <h3 id="question-title" class="text-lg md:text-xl font-bold text-gray-800"></h3>
+                <div id="options-container" class="space-y-3"></div>
+            </div>
+
+            <div class="flex justify-between items-center mt-8 pt-4 border-t border-gray-100">
+                <button id="btn-prev" onclick="prevQuestion()" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                    <i class="fa-solid fa-chevron-left mr-1"></i> Sebelumnya
+                </button>
+                <span class="text-xs text-gray-400">Pilih salah satu jawaban yang paling sesuai denganku</span>
+            </div>
+        </div>
+
+        <!-- VIEW 3: Hasil Siswa -->
+        <div id="view-result" class="hidden bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <div id="student-pdf-content" class="p-2">
+                <div class="text-center mb-6">
+                    <span class="inline-block p-3 bg-indigo-100 text-indigo-600 rounded-full mb-3">
+                        <i class="fa-solid fa-square-poll-vertical text-3xl"></i>
+                    </span>
+                    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-800">Hasil Deteksi Gaya Belajar</h2>
+                    
+                    <!-- Informasi Nama dan Kelas Siswa -->
+                    <div class="mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl inline-block max-w-md w-full">
+                        <p class="text-xs text-gray-500 uppercase font-semibold">Identitas Siswa:</p>
+                        <h3 id="res-nama-siswa" class="text-lg font-bold text-indigo-900"></h3>
+                        <p id="res-kelas-siswa" class="text-sm font-medium text-indigo-700"></p>
+                    </div>
+                </div>
+
+                <!-- Card Dominan -->
+                <div id="card-dominan" class="rounded-xl p-5 mb-6 text-center border-2"></div>
+
+                <!-- Detail Skor Grafik -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-center">
+                        <i class="fa-solid fa-eye text-indigo-600 text-2xl mb-1"></i>
+                        <h4 class="font-bold text-indigo-900">Visual</h4>
+                        <p id="score-v" class="text-2xl font-extrabold text-indigo-600">0%</p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                        <i class="fa-solid fa-ear-listen text-emerald-600 text-2xl mb-1"></i>
+                        <h4 class="font-bold text-emerald-900">Auditori</h4>
+                        <p id="score-a" class="text-2xl font-extrabold text-emerald-600">0%</p>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                        <i class="fa-solid fa-person-running text-amber-600 text-2xl mb-1"></i>
+                        <h4 class="font-bold text-amber-900">Kinestetik</h4>
+                        <p id="score-k" class="text-2xl font-extrabold text-amber-600">0%</p>
+                    </div>
+                </div>
+
+                <!-- Rekomendasi Belajar -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                    <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb text-yellow-500"></i> Rekomendasi Cara Belajar Untukmu:
+                    </h4>
+                    <ul id="rekomendasi-list" class="list-disc list-inside text-sm text-gray-700 space-y-1.5"></ul>
+                </div>
+            </div>
+
+            <!-- Tombol Aksi Siswa -->
+            <div class="flex flex-col sm:flex-row justify-center gap-3 mt-8 pt-4 border-t border-gray-100">
+                <button onclick="downloadStudentPDF()" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-pdf"></i> Download Hasil (PDF)
+                </button>
+                <button onclick="resetApp()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> Tes Ulang
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 4: Dashboard Guru BK -->
+        <div id="view-admin" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-user-shield text-indigo-600"></i> Panel Guru BK
+                        </h2>
+                        <p class="text-xs text-gray-500">Kelola dan unduh rekap data tes gaya belajar siswa</p>
+                    </div>
+                    <button onclick="logoutAdmin()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                        <i class="fa-solid fa-right-from-bracket"></i> Keluar Admin
+                    </button>
+                </div>
+
+                <!-- Ekspor Keseluruhan -->
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6">
+                    <h3 class="font-bold text-indigo-900 mb-3 text-sm md:text-base flex items-center gap-2">
+                        <i class="fa-solid fa-download"></i> Unduh Rekap Seluruh Siswa:
+                    </h3>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="exportAllExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg text-xs md:text-sm transition flex items-center gap-2 shadow">
+                            <i class="fa-solid fa-file-excel"></i> Unduh Excel / Sheet (.xlsx)
+                        </button>
+                        <button onclick="exportAllWord()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-xs md:text-sm transition flex items-center gap-2 shadow">
+                            <i class="fa-solid fa-file-word"></i> Unduh Laporan Word (.doc)
+                        </button>
+                        <button onclick="exportAllPDF()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 py-2 rounded-lg text-xs md:text-sm transition flex items-center gap-2 shadow">
+                            <i class="fa-solid fa-file-pdf"></i> Unduh Rekap PDF (.pdf)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabel Data Siswa -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600 border-collapse">
+                        <thead class="bg-slate-100 text-slate-700 font-semibold border-b">
+                            <tr>
+                                <th class="p-3">No</th>
+                                <th class="p-3">Tanggal</th>
+                                <th class="p-3">Nama Siswa</th>
+                                <th class="p-3">Kelas</th>
+                                <th class="p-3">Hasil Dominan</th>
+                                <th class="p-3">Skor (V/A/K)</th>
+                                <th class="p-3 text-center">Aksi / Unduh Per Siswa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body" class="divide-y">
+                            <!-- Diisi via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Login Guru BK -->
+    <div id="modal-login" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 relative">
+            <button onclick="toggleLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <div class="text-center mb-6">
+                <div class="inline-block p-3 bg-indigo-100 text-indigo-600 rounded-full mb-2">
+                    <i class="fa-solid fa-lock text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Login Guru BK</h3>
+                <p class="text-xs text-gray-500">Masukkan kata sandi khusus Guru BK</p>
+            </div>
+            <form onsubmit="loginAdmin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+                    <input type="password" id="password-bk" required placeholder="Masukkan password" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg transition">
+                    Masuk
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script Logika Aplikasi -->
+    <script>
+        // Data Soal VAK
+        const questions = [
+            {
+                q: "Saat guru menjelaskan pelajaran di depan kelas, kamu lebih mudah memahami dengan cara...",
+                options: [
+                    { text: "Melihat tulisan di papan tulis, diagram, atau paparan slide presenter", type: "V" },
+                    { text: "Mendengarkan baik-baik penjelasan lisan dari guru", type: "A" },
+                    { text: "Mencoba langsung latihan soal atau mempraktikkannya", type: "K" }
+                ]
+            },
+            {
+                q: "Ketika mengingat materi yang sudah dipelajari, kamu paling sering ingat...",
+                options: [
+                    { text: "Bentuk catatan, warna stabilo, atau gambar di buku", type: "V" },
+                    { text: "Kata-kata atau suara guru saat menerangkan", type: "A" },
+                    { text: "Kegiatan, gerakan, atau eksperimen yang pernah dilakukan", type: "K" }
+                ]
+            },
+            {
+                q: "Jika kamu diberikan waktu luang untuk membaca buku/artikel, kamu cenderung...",
+                options: [
+                    { text: "Menyukai buku yang banyak ilustrasi, gambar, atau grafiknya", type: "V" },
+                    { text: "Membaca dengan berbisik/mengucapkan kata-kata dalam hati", type: "A" },
+                    { text: "Membaca sambil menggerakkan anggota tubuh/berjalan kecil", type: "K" }
+                ]
+            },
+            {
+                q: "Saat kamu mengalami kesulitan dalam memahami suatu masalah, kamu memilih...",
+                options: [
+                    { text: "Mencari denah, peta konsep, atau panduan visual", type: "V" },
+                    { text: "Berdiskusi atau bertanya langsung pada kawan/guru", type: "A" },
+                    { text: "Melakukan simulasi atau mencoba-coba sendiri sampai berhasil", type: "K" }
+                ]
+            },
+            {
+                q: "Apa yang paling mengganggu konsentrasimu saat belajar?",
+                options: [
+                    { text: "Ruangan belajar yang berantakan atau tidak rapi secara visual", type: "V" },
+                    { text: "Suara bising, obrolan orang, atau kebisingan di sekitar", type: "A" },
+                    { text: "Harus duduk diam terlalu lama tanpa bergerak", type: "K" }
+                ]
+            },
+            {
+                q: "Saat berbicara dengan orang lain, gaya bicaramu cenderung...",
+                options: [
+                    { text: "Cepat dan sering menggunakan kata 'lihat', 'bayangkan'", type: "V" },
+                    { text: "Berirama, jelas, dan menggunakan kata 'dengar', 'katakan'", type: "A" },
+                    { text: "Lambat dan banyak menggunakan bahasa tubuh/gestur tangan", type: "K" }
+                ]
+            },
+            {
+                q: "Bagaimana cara terbaikmu untuk menghafal sesuatu (misal: rumus / kosa kata)?",
+                options: [
+                    { text: "Menulisnya berulang kali atau membuat mind-mapping", type: "V" },
+                    { text: "Mengucapkannya keras-keras berulang kali", type: "A" },
+                    { text: "Menulis di udara atau mempraktikkannya dalam gerakan", type: "K" }
+                ]
+            },
+            {
+                q: "Saat waktu istirahat sekolah, kamu lebih suka...",
+                options: [
+                    { text: "Mengamati suasana, membaca komik, atau melihat-lihat sekeliling", type: "V" },
+                    { text: "Mengobrol dengan teman-teman atau mendengarkan musik", type: "A" },
+                    { text: "Bermain olahraga, berjalan-jalan, atau aktivitas fisik", type: "K" }
+                ]
+            },
+            {
+                q: "Ketika merakit sebuah alat/mainan baru, kamu akan...",
+                options: [
+                    { text: "Melihat petunjuk berupa gambar skema terlebih dahulu", type: "V" },
+                    { text: "Minta dijelaskan cara merakitnya oleh orang lain", type: "A" },
+                    { text: "Langsung merakitnya dan mencoba-coba komponennya", type: "K" }
+                ]
+            },
+            {
+                q: "Saat mengekspresikan emosi/perasaan, kamu biasanya...",
+                options: [
+                    { text: "Terlihat dari raut wajah dan mimik mukamu", type: "V" },
+                    { text: "Mengungkapkannya lewat kata-kata atau nada suara", type: "A" },
+                    { text: "Terlihat dari gerakan tubuh, pusing, atau kontak fisik", type: "K" }
+                ]
+            },
+            {
+                q: "Jenis kegiatan pembelajaran yang paling kamu sukai di kelas adalah...",
+                options: [
+                    { text: "Menonton video pembelajaran atau presentasi gambar", type: "V" },
+                    { text: "Mendengarkan ceramah interaktif atau diskusi kelompok", type: "A" },
+                    { text: "Praktikum laboratorium atau role playing / drama", type: "K" }
+                ]
+            },
+            {
+                q: "Ketika memilih pakaian/barang, fokus utamamu adalah...",
+                options: [
+                    { text: "Tampilan visual, kombinasi warna, dan kerapiannya", type: "V" },
+                    { text: "Merek, sebutan/rekomendasi dari orang lain", type: "A" },
+                    { text: "Kenyamanan saat dipakai dan kebebasan bergerak", type: "K" }
+                ]
+            }
+        ];
+
+        // State Aplikasi
+        let currentStudent = {};
+        let currentQuestionIndex = 0;
+        let answers = [];
+        let allResultsData = JSON.parse(localStorage.getItem('vak_results') || '[]');
+
+        // Start Test
+        function startTest(e) {
+            e.preventDefault();
+            currentStudent = {
+                nama: document.getElementById('nama-siswa').value,
+                kelas: document.getElementById('kelas-siswa').value,
+                nis: document.getElementById('nis-siswa').value,
+                tanggal: new Date().toLocaleDateString('id-ID')
+            };
+
+            currentQuestionIndex = 0;
+            answers = new Array(questions.length).fill(null);
+
+            document.getElementById('view-start').classList.add('hidden');
+            document.getElementById('view-test').classList.remove('hidden');
+            renderQuestion();
+        }
+
+        // Render Soal
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            document.getElementById('question-title').innerText = `${currentQuestionIndex + 1}. ${q.q}`;
+            
+            const optionsDiv = document.getElementById('options-container');
+            optionsDiv.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const isSelected = answers[currentQuestionIndex] === opt.type;
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                    isSelected ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-semibold' : 'border-gray-200 hover:border-indigo-300 bg-white'
+                }`;
+                btn.onclick = () => selectAnswer(opt.type);
+                btn.innerHTML = `
+                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs ${
+                        isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300'
+                    }">${isSelected ? '<i class="fa-solid fa-check"></i>' : String.fromCharCode(65 + idx)}</div>
+                    <span class="text-sm md:text-base">${opt.text}</span>
+                `;
+                optionsDiv.appendChild(btn);
+            });
+
+            // Update Progress
+            const progressPct = Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
+            document.getElementById('progress-bar').style.width = `${progressPct}%`;
+            document.getElementById('question-progress-text').innerText = `Soal ${currentQuestionIndex + 1} dari ${questions.length}`;
+            document.getElementById('percentage-text').innerText = `${progressPct}% Selesai`;
+
+            // Navigation Buttons
+            document.getElementById('btn-prev').classList.toggle('hidden', currentQuestionIndex === 0);
+        }
+
+        // Select Answer & Auto Next
+        function selectAnswer(type) {
+            answers[currentQuestionIndex] = type;
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            } else {
+                finishTest();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        // Finish Test & Calculate
+        function finishTest() {
+            let countV = answers.filter(a => a === 'V').length;
+            let countA = answers.filter(a => a === 'A').length;
+            let countK = answers.filter(a => a === 'K').length;
+
+            let pctV = Math.round((countV / questions.length) * 100);
+            let pctA = Math.round((countA / questions.length) * 100);
+            let pctK = Math.round((countK / questions.length) * 100);
+
+            // Determine Dominan Style
+            let maxCount = Math.max(countV, countA, countK);
+            let dominanArr = [];
+            if (countV === maxCount) dominanArr.push('Visual');
+            if (countA === maxCount) dominanArr.push('Auditori');
+            if (countK === maxCount) dominanArr.push('Kinestetik');
+
+            let dominanText = dominanArr.join(' & ');
+
+            currentStudent.scores = { V: pctV, A: pctA, K: pctK };
+            currentStudent.dominan = dominanText;
+
+            // Save to LocalStorage
+            allResultsData.push(currentStudent);
+            localStorage.setItem('vak_results', JSON.stringify(allResultsData));
+
+            // Render Result
+            renderResultUI(currentStudent);
+
+            document.getElementById('view-test').classList.add('hidden');
+            document.getElementById('view-result').classList.remove('hidden');
+        }
+
+        // Render UI Hasil Siswa
+        function renderResultUI(data) {
+            document.getElementById('res-nama-siswa').innerText = data.nama;
+            document.getElementById('res-kelas-siswa').innerText = `Kelas: ${data.kelas} | NIS: ${data.nis}`;
+            
+            document.getElementById('score-v').innerText = `${data.scores.V}%`;
+            document.getElementById('score-a').innerText = `${data.scores.A}%`;
+            document.getElementById('score-k').innerText = `${data.scores.K}%`;
+
+            const card = document.getElementById('card-dominan');
+            const rekomList = document.getElementById('rekomendasi-list');
+            rekomList.innerHTML = '';
+
+            let colorClass = "";
+            let desc = "";
+            let rekomArr = [];
+
+            if (data.dominan.includes('Visual')) {
+                colorClass = "bg-indigo-50 border-indigo-300 text-indigo-900";
+                desc = "Kamu memiliki gaya belajar <strong>Visual</strong>. Kamu lebih mudah menyerap informasi yang disajikan dalam bentuk gambar, grafik, warna, dan catatan tertulis.";
+                rekomArr.push("Gunakan penanda warna (stabilo) saat mencatat poin penting.", "Buat peta konsep (mind mapping) atau diagram ringkasan.", "Gunakan video ilustrasi atau gambar visual dalam belajar.");
+            }
+            if (data.dominan.includes('Auditori')) {
+                colorClass = "bg-emerald-50 border-emerald-300 text-emerald-900";
+                desc = "Kamu memiliki gaya belajar <strong>Auditori</strong>. Kamu paling efektif belajar dengan cara mendengarkan ceramah, diskusi, dan membaca dengan suara nyaring.";
+                rekomArr.push("Dengarkan rekaman penjelasan guru atau penjelasan materi.", "Gunakan diskusi kelompok untuk membicarakan ulang pelajaran.", "Membaca teks atau rumus sambil mengucapkannya perlahan.");
+            }
+            if (data.dominan.includes('Kinestetik')) {
+                colorClass = "bg-amber-50 border-amber-300 text-amber-900";
+                desc = "Kamu memiliki gaya belajar <strong>Kinestetik</strong>. Kamu belajar paling baik melalui aktivitas fisik, gerakan, serta praktik langsung.";
+                rekomArr.push("Belajar sambil melakukan praktik langsung / eksperimen.", "Selingi waktu belajar dengan jeda pergerakan fisik secara berkala.", "Gunakan alat peraga atau objek nyata saat mendalami materi.");
+            }
+
+            card.className = `rounded-xl p-5 mb-6 text-center border-2 ${colorClass}`;
+            card.innerHTML = `
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Gaya Belajar Dominan Anda:</span>
+                <h3 class="text-2xl font-black mt-1 mb-2">${data.dominan}</h3>
+                <p class="text-sm opacity-90">${desc}</p>
+            `;
+
+            rekomArr.forEach(r => {
+                const li = document.createElement('li');
+                li.innerText = r;
+                rekomList.appendChild(li);
+            });
+        }
+
+        // Reset Tes
+        function resetApp() {
+            document.getElementById('form-biodata').reset();
+            document.getElementById('view-result').classList.add('hidden');
+            document.getElementById('view-start').classList.remove('hidden');
+        }
+
+        // Download Hasil PDF Siswa (Html2Pdf)
+        function downloadStudentPDF() {
+            const element = document.getElementById('student-pdf-content');
+            const opt = {
+                margin:       0.5,
+                filename:     `Hasil_VAK_${currentStudent.nama.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // LOGIN GURU BK (Password: gurubk234)
+        function toggleLoginModal() {
+            document.getElementById('modal-login').classList.toggle('hidden');
+        }
+
+        function loginAdmin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('password-bk').value;
+            if (pass === "gurubk234") {
+                toggleLoginModal();
+                showAdminPanel();
+            } else {
+                alert("Password Guru BK Salah! Gunakan password: gurubk234");
+            }
+        }
+
+        function showAdminPanel() {
+            document.getElementById('view-start').classList.add('hidden');
+            document.getElementById('view-test').classList.add('hidden');
+            document.getElementById('view-result').classList.add('hidden');
+            document.getElementById('view-admin').classList.remove('hidden');
+
+            renderAdminTable();
+        }
+
+        function logoutAdmin() {
+            document.getElementById('view-admin').classList.add('hidden');
+            document.getElementById('view-start').classList.remove('hidden');
+        }
+
+        // Render Tabel Guru BK
+        function renderAdminTable() {
+            const tbody = document.getElementById('admin-table-body');
+            tbody.innerHTML = '';
+
+            if (allResultsData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400">Belum ada data siswa yang melakukan tes.</td></tr>`;
+                return;
+            }
+
+            allResultsData.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold">${idx + 1}</td>
+                    <td class="p-3 text-xs text-gray-500">${s.tanggal || '-'}</td>
+                    <td class="p-3 font-medium text-gray-800">${s.nama}</td>
+                    <td class="p-3">${s.kelas}</td>
+                    <td class="p-3 font-bold text-indigo-700">${s.dominan}</td>
+                    <td class="p-3 text-xs">V:${s.scores.V}% | A:${s.scores.A}% | K:${s.scores.K}%</td>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="exportSinglePDF(${idx})" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded text-xs" title="Unduh PDF">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </button>
+                        <button onclick="exportSingleWord(${idx})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs" title="Unduh Word">
+                            <i class="fa-solid fa-file-word"></i>
+                        </button>
+                        <button onclick="exportSingleExcel(${idx})" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded text-xs" title="Unduh Sheet">
+                            <i class="fa-solid fa-file-excel"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // =====================================
+        // EKSPORED LOGIC FOR GURU BK (Sheet/Word/PDF)
+        // =====================================
+
+        // --- 1. EXCEL / SHEET EXPORT ---
+        function exportAllExcel() {
+            if (allResultsData.length === 0) return alert("Belum ada data.");
+            
+            const wsData = [
+                ["No", "Tanggal", "Nama Siswa", "Kelas", "NIS", "Gaya Belajar Dominan", "Skor Visual (%)", "Skor Auditori (%)", "Skor Kinestetik (%)"]
+            ];
+
+            allResultsData.forEach((s, i) => {
+                wsData.push([i + 1, s.tanggal, s.nama, s.kelas, s.nis, s.dominan, s.scores.V, s.scores.A, s.scores.K]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap Gaya Belajar Siswa");
+            XLSX.writeFile(wb, "Rekap_Gaya_Belajar_Seluruh_Siswa.xlsx");
+        }
+
+        function exportSingleExcel(idx) {
+            const s = allResultsData[idx];
+            const wsData = [
+                ["LAPORAN HASIL TES GAYA BELAJAR SISWA"],
+                ["Nama", s.nama],
+                ["Kelas", s.kelas],
+                ["NIS", s.nis],
+                ["Tanggal Tes", s.tanggal],
+                [""],
+                ["Gaya Belajar Dominan", s.dominan],
+                ["Skor Visual", `${s.scores.V}%`],
+                ["Skor Auditori", `${s.scores.A}%`],
+                ["Skor Kinestetik", `${s.scores.K}%`]
+            ];
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Hasil Siswa");
+            XLSX.writeFile(wb, `Hasil_Gaya_Belajar_${s.nama.replace(/\s+/g, '_')}.xlsx`);
+        }
+
+        // --- 2. WORD EXPORT (.doc HTML Format) ---
+        function exportAllWord() {
+            if (allResultsData.length === 0) return alert("Belum ada data.");
+
+            let tableRows = allResultsData.map((s, i) => `
+                <tr>
+                    <td style="border:1px solid #ccc; padding:6px;">${i + 1}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">${s.nama}</td>
+                    <td style="border:1px solid #ccc; padding:6px;">${s.kelas}</td>
+                    <td style="border:1px solid #ccc; padding:6px;"><b>${s.dominan}</b></td>
+                    <td style="border:1px solid #ccc; padding:6px;">${s.scores.V}%</td>
+                    <td style="border:1px solid #ccc; padding:6px;">${s.scores.A}%</td>
+                    <td style="border:1px solid #ccc; padding:6px;">${s.scores.K}%</td>
+                </tr>
+            `).join('');
+
+            let htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><title>Laporan Rekap Gaya Belajar</title></head>
+                <body style="font-family:Arial, sans-serif;">
+                    <h2 style="text-align:center; color:#2b3674;">REKAP HASIL DETEKSI GAYA BELAJAR SISWA</h2>
+                    <p style="text-align:center;">Bimbingan & Konseling (BK)</p>
+                    <hr/>
+                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                        <thead>
+                            <tr style="background-color:#4338ca; color:white;">
+                                <th style="border:1px solid #ccc; padding:6px;">No</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Nama Siswa</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Kelas</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Gaya Belajar Dominan</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Visual</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Auditori</th>
+                                <th style="border:1px solid #ccc; padding:6px;">Kinestetik</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            downloadBlob(htmlContent, 'Rekap_Gaya_Belajar_Seluruh_Siswa.doc', 'application/msword');
+        }
+
+        function exportSingleWord(idx) {
+            const s = allResultsData[idx];
+            let htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><title>Hasil Tes ${s.nama}</title></head>
+                <body style="font-family:Arial, sans-serif; padding:20px;">
+                    <h2 style="color:#2b3674; text-align:center;">HASIL TES GAYA BELAJAR SISWA (VAK)</h2>
+                    <hr/>
+                    <table style="width:100%; margin-bottom:20px;">
+                        <tr><td><b>Nama Lengkap</b></td><td>: ${s.nama}</td></tr>
+                        <tr><td><b>Kelas</b></td><td>: ${s.kelas}</td></tr>
+                        <tr><td><b>NIS</b></td><td>: ${s.nis}</td></tr>
+                        <tr><td><b>Tanggal Tes</b></td><td>: ${s.tanggal}</td></tr>
+                    </table>
+                    <div style="background-color:#f3f4f6; padding:15px; border-radius:8px; margin-bottom:20px;">
+                        <h3 style="margin:0; color:#4338ca;">Gaya Belajar Dominan: ${s.dominan}</h3>
+                    </div>
+                    <h4>Persentase Skor:</h4>
+                    <ul>
+                        <li><b>Visual:</b> ${s.scores.V}%</li>
+                        <li><b>Auditori:</b> ${s.scores.A}%</li>
+                        <li><b>Kinestetik:</b> ${s.scores.K}%</li>
+                    </ul>
+                </body>
+                </html>
+            `;
+
+            downloadBlob(htmlContent, `Hasil_Gaya_Belajar_${s.nama.replace(/\s+/g, '_')}.doc`, 'application/msword');
+        }
+
+        // --- 3. PDF EXPORT (Seluruh Siswa) ---
+        function exportAllPDF() {
+            if (allResultsData.length === 0) return alert("Belum ada data.");
+
+            const printDiv = document.createElement('div');
+            printDiv.className = "p-4 font-sans";
+            
+            let tableRows = allResultsData.map((s, i) => `
+                <tr class="border-b text-sm">
+                    <td class="p-2">${i + 1}</td>
+                    <td class="p-2">${s.nama}</td>
+                    <td class="p-2">${s.kelas}</td>
+                    <td class="p-2 font-bold">${s.dominan}</td>
+                    <td class="p-2">V:${s.scores.V}% A:${s.scores.A}% K:${s.scores.K}%</td>
+                </tr>
+            `).join('');
+
+            printDiv.innerHTML = `
+                <div class="text-center mb-4">
+                    <h2 class="text-xl font-bold">REKAPITULASI GAYA BELAJAR SISWA</h2>
+                    <p class="text-xs text-gray-600">Laporan Bimbingan Konseling (Guru BK)</p>
+                </div>
+                <table class="w-full border-collapse border border-gray-300 text-left">
+                    <thead>
+                        <tr class="bg-indigo-600 text-white text-sm">
+                            <th class="p-2">No</th>
+                            <th class="p-2">Nama</th>
+                            <th class="p-2">Kelas</th>
+                            <th class="p-2">Hasil Dominan</th>
+                            <th class="p-2">Rincian Skor</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+
+            const opt = {
+                margin:       0.5,
+                filename:     `Rekap_Gaya_Belajar_Seluruh_Siswa.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(printDiv).save();
+        }
+
+        function exportSinglePDF(idx) {
+            renderResultUI(allResultsData[idx]);
+            downloadStudentPDF();
+        }
+
+        // Utility Helper untuk Blob Download
+        function downloadBlob(content, filename, contentType) {
+            const blob = new Blob(['\ufeff' + content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
