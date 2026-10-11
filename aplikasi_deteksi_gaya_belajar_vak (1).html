@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Deteksi Gaya Belajar VAK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.1.0/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="h-full bg-gradient-to-br from-indigo-50 via-sky-50 to-emerald-50 text-slate-800 flex flex-col min-h-screen">
+
+    <header class="bg-white/80 backdrop-blur-md shadow-sm border-b border-indigo-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="app.goHome()">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-brain text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-indigo-900 leading-tight">VAK Detector</h1>
+                    <p class="text-xs text-indigo-500 font-medium">Visual, Auditorial, Kinestetik</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="app.openTeacherLogin()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl font-medium text-sm transition shadow-sm border border-indigo-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-lock text-xs"></i>
+                    <span>Panel Guru BK</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 my-auto">
+        
+        <!-- VIEW 1: HOME & REGISTRATION -->
+        <div id="view-home" class="bg-white rounded-3xl shadow-xl border border-indigo-50 p-6 sm:p-10 transition-all duration-300">
+            <div class="text-center max-w-xl mx-auto mb-8">
+                <span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">Asesmen Psikologis Siswa</span>
+                <h2 class="text-3xl font-bold text-slate-900 mt-3 mb-2">Kenali Gaya Belajarmu!</h2>
+                <p class="text-slate-600 text-sm">Temukan apakah kamu tipe Visual, Auditorial, atau Kinestetik agar proses belajarmu jauh lebih efektif dan menyenangkan.</p>
+            </div>
+
+            <form id="form-register" onsubmit="app.startQuiz(event)" class="space-y-5 max-w-md mx-auto bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-indigo-900 mb-1">Nama Lengkap Siswa</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="reg-name" required placeholder="Contoh: Budi Santoso" 
+                            class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-indigo-900 mb-1">Kelas / Rombel</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </span>
+                        <input type="text" id="reg-class" required placeholder="Contoh: XI MIPA 1" 
+                            class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2">
+                    <span>Mulai Kuesioner</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- VIEW 2: QUIZ / KUESIONER -->
+        <div id="view-quiz" class="hidden bg-white rounded-3xl shadow-xl border border-indigo-50 p-6 sm:p-10">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                <div>
+                    <span id="quiz-counter" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg">Pertanyaan 1 dari 15</span>
+                    <h3 id="quiz-student-info" class="text-sm font-semibold text-slate-700 mt-1">Nama - Kelas</h3>
+                </div>
+                <div class="w-32 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <div id="quiz-progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h4 id="question-text" class="text-lg font-semibold text-slate-900 mb-4 leading-relaxed">Pernyataan kuesioner akan muncul di sini.</h4>
+                <div id="options-container" class="space-y-3">
+                    <!-- Dynamic Options -->
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                <button type="button" id="btn-prev" onclick="app.prevQuestion()" class="hidden px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Sebelumnya
+                </button>
+                <div class="ml-auto">
+                    <button type="button" id="btn-next" onclick="app.nextQuestion()" disabled class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-2.5 px-6 rounded-xl transition shadow-md text-sm flex items-center space-x-2">
+                        <span>Selanjutnya</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: RESULT / HASIL SISWA -->
+        <div id="view-result" class="hidden space-y-6">
+            <div id="print-area-result" class="bg-white rounded-3xl shadow-xl border border-indigo-50 p-6 sm:p-10">
+                <div class="text-center pb-6 border-b border-slate-100">
+                    <div class="inline-flex bg-emerald-100 text-emerald-700 p-3 rounded-2xl mb-3 shadow-inner">
+                        <i class="fa-solid fa-award text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-900">Hasil Analisis Gaya Belajar VAK</h2>
+                    <p class="text-slate-500 text-sm mt-1">Berdasarkan jawaban kuesioner yang telah kamu isi</p>
+                    
+                    <div class="mt-4 inline-block bg-slate-50 border border-slate-200 rounded-2xl px-6 py-2">
+                        <p class="text-sm font-bold text-slate-800"><span id="res-name">-</span> <span class="text-slate-400 font-normal">|</span> <span id="res-class" class="text-indigo-600">-</span></p>
+                    </div>
+                </div>
+
+                <div class="py-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 text-center">
+                        <span class="text-xs font-semibold text-indigo-500 uppercase">Visual (V)</span>
+                        <h3 id="score-v" class="text-2xl font-bold text-indigo-900 mt-1">0 Poin</h3>
+                    </div>
+                    <div class="bg-sky-50/50 p-4 rounded-2xl border border-sky-100 text-center">
+                        <span class="text-xs font-semibold text-sky-500 uppercase">Auditorial (A)</span>
+                        <h3 id="score-a" class="text-2xl font-bold text-sky-900 mt-1">0 Poin</h3>
+                    </div>
+                    <div class="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 text-center">
+                        <span class="text-xs font-semibold text-emerald-500 uppercase">Kinestetik (K)</span>
+                        <h3 id="score-k" class="text-2xl font-bold text-emerald-900 mt-1">0 Poin</h3>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white p-6 rounded-2xl shadow-lg mb-6">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-200">Gaya Belajar Dominan Anda</span>
+                    <h3 id="res-dominant" class="text-3xl font-extrabold mt-1 mb-2">-</h3>
+                    <p id="res-desc" class="text-sm text-indigo-100 leading-relaxed">-</p>
+                </div>
+
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                    <h4 class="font-semibold text-slate-800 mb-2 text-sm flex items-center">
+                        <i class="fa-solid fa-lightbulb text-amber-500 mr-2"></i> Tips & Rekomendasi Belajar:
+                    </h4>
+                    <ul id="res-tips" class="text-sm text-slate-600 space-y-1.5 list-disc list-inside">
+                        <!-- Dynamic tips -->
+                    </ul>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 justify-center">
+                <button onclick="app.downloadStudentPDF()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 px-5 rounded-xl transition shadow-md text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>Unduh Hasil (PDF)</span>
+                </button>
+                <button onclick="app.downloadStudentWord()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl transition shadow-md text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-file-word"></i>
+                    <span>Unduh Hasil (Word)</span>
+                </button>
+                <button onclick="app.goHome()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-5 rounded-xl transition text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Selesai / Tes Baru</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 4: TEACHER LOGIN MODAL / PANEL -->
+        <div id="modal-teacher-login" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8 relative">
+                <button onclick="app.closeTeacherLogin()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                <div class="text-center mb-6">
+                    <div class="bg-indigo-100 text-indigo-700 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                        <i class="fa-solid fa-lock text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900">Autentikasi Guru BK</h3>
+                    <p class="text-xs text-slate-500 mt-1">Masukkan password untuk membuka panel rekap data siswa</p>
+                </div>
+
+                <form onsubmit="app.verifyTeacher(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-700 mb-1">Password Panel</label>
+                        <input type="password" id="teacher-pass" required placeholder="Masukkan password..." 
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition shadow-md text-sm">
+                        Masuk Panel
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW 5: TEACHER DASHBOARD / PANEL -->
+        <div id="view-teacher-dashboard" class="hidden bg-white rounded-3xl shadow-xl border border-indigo-50 p-6 sm:p-10 space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-100 gap-4">
+                <div>
+                    <span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Dashboard Guru BK</span>
+                    <h2 class="text-2xl font-bold text-slate-900 mt-1">Rekapitulasi Data Siswa</h2>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="app.downloadAllExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-xl transition shadow-sm text-xs flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Rekap Excel</span>
+                    </button>
+                    <button onclick="app.downloadAllWord()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl transition shadow-sm text-xs flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-word"></i>
+                        <span>Rekap Word</span>
+                    </button>
+                    <button onclick="app.downloadAllPDF()" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded-xl transition shadow-sm text-xs flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Rekap PDF</span>
+                    </button>
+                    <button onclick="app.goHome()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-xl transition text-xs">
+                        Keluar
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                            <th class="p-3.5">No</th>
+                            <th class="p-3.5">Nama Siswa</th>
+                            <th class="p-3.5">Kelas</th>
+                            <th class="p-3.5 text-center">Visual</th>
+                            <th class="p-3.5 text-center">Auditorial</th>
+                            <th class="p-3.5 text-center">Kinestetik</th>
+                            <th class="p-3.5">Dominan</th>
+                            <th class="p-3.5 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacher-table-body" class="divide-y divide-slate-100 text-sm">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center py-4 text-xs text-slate-400 border-t border-indigo-100/50 mt-auto">
+        Aplikasi Asesmen Gaya Belajar VAK &copy; 2026 &bull; Layanan Bimbingan & Konseling
+    </footer>
+
+    <script>
+        const questions = [
+            { id: 1, text: "Saat belajar hal baru, saya lebih suka:", options: [
+                { text: "Melihat diagram, grafik, atau membaca buku teks bergambar.", type: "V" },
+                { text: "Mendengarkan penjelasan guru atau diskusi kelompok.", type: "A" },
+                { text: "Mempraktikkan langsung atau membuat model benda.", type: "K" }
+            ]},
+            { id: 2, text: "Bagaimana cara mudah mengingat nomor telepon atau rumus?", options: [
+                { text: "Membayangkan bentuk angka atau rumus tersebut tertulis di kepala.", type: "V" },
+                { text: "Mengucapkan angka atau rumus tersebut secara berulang-ulang.", type: "A" },
+                { text: "Menuliskan angka atau rumus tersebut di udara atau kertas.", type: "K" }
+            ]},
+            { id: 3, text: "Saat berada di ruangan baru, apa yang paling kamu perhatikan?", options: [
+                { text: "Tata letak ruangan, warna dinding, dan keindahan dekorasi.", type: "V" },
+                { text: "Suara bising, musik latar, atau percakapan orang lain.", type: "A" },
+                { text: "Kenyamanan kursi, suhu ruangan, dan keleluasaan bergerak.", type: "K" }
+            ]},
+            { id: 4, text: "Ketika saya bosan saat mendengarkan penjelasan yang lama, saya biasanya:", options: [
+                { text: "Mencoret-coret buku catatan atau melamun membayangkan sesuatu.", type: "V" },
+                { text: "Berbicara pelan pada diri sendiri atau bersenandung.", type: "A" },
+                { text: "Menggerakkan kaki, mengetuk-ngetuk jari, atau mengubah posisi duduk.", type: "K" }
+            ]},
+            { id: 5, text: "Bagaimana cara kamu mempelajari cara merakit mainan atau alat?", options: [
+                { text: "Melihat gambar atau petunjuk langkah visual yang disediakan.", type: "V" },
+                { text: "Mendengarkan instruksi lisan dari orang lain.", type: "A" },
+                { text: "Langsung membongkar dan merakitnya tanpa membaca panduan.", type: "K" }
+            ]},
+            { id: 6, text: "Saat mengingat kejadian masa lalu, yang paling kuat teringat adalah:", options: [
+                { text: "Wajah orang, pemandangan, atau warna pakaian yang dipakai.", type: "V" },
+                { text: "Suara, kata-kata yang diucapkan, atau lagu yang diputar.", type: "A" },
+                { text: "Perasaan fisik, suasana emosi, atau gerakan yang dilakukan.", type: "K" }
+            ]},
+            { id: 7, text: "Pilihan hobi atau aktivitas di waktu luang yang paling disukai:", options: [
+                { text: "Menonton film, menggambar, atau membaca komik/novel.", type: "V" },
+                { text: "Mendengarkan musik, siniar (podcast), atau bernyanyi.", type: "A" },
+                { text: "Berolahraga, menari, berkebun, atau merakit kerajinan tangan.", type: "K" }
+            ]},
+            { id: 8, text: "Ketika saya harus mengeja sebuah kata sulit, saya:", options: [
+                { text: "Membayangkan rupa kata tersebut di benak saya.", type: "V" },
+                { text: "Mengucapkan kata tersebut dengan suara keras untuk mendengar bunyinya.", type: "A" },
+                { text: "Menuliskan kata tersebut di kertas untuk merasakan gerakan tangannya.", type: "K" }
+            ]},
+            { id: 9, text: "Saya merasa paling mudah berkonsentrasi jika:", options: [
+                { text: "Keadaan sekitar rapi, terang, dan tidak ada gangguan visual.", type: "V" },
+                { text: "Suasana tenang atau mendengarkan musik instrumental yang lembut.", type: "A" },
+                { text: "Boleh bergerak santai atau memegang benda di tangan.", type: "K" }
+            ]},
+            { id: 10, text: "Saat seseorang memberikan arahan rute jalan, saya lebih paham jika:", options: [
+                { text: "Diberikan peta atau denah bergambar.", type: "V" },
+                { text: "Dijelaskan secara lisan dengan detail belokan-belokannya.", type: "A" },
+                { text: "Diantar langsung atau mencoba melewatinya sendiri.", type: "K" }
+            ]},
+            { id: 11, text: "Dalam kelompok belajar, peran yang biasanya paling saya sukai adalah:", options: [
+                { text: "Membuat poster rangkuman atau mind mapping materi.", type: "V" },
+                { text: "Menjadi juru bicara atau memimpin diskusi materi.", type: "A" },
+                { text: "Menyiapkan alat peraga atau melakukan eksperimen langsung.", type: "K" }
+            ]},
+            { id: 12, text: "Reaksi saya ketika mengalami kebingungan belajar:", options: [
+                { text: "Mencari buku referensi lain yang memiliki ilustrasi lebih jelas.", type: "V" },
+                { text: "Bertanya kepada guru atau teman untuk berdiskusi langsung.", type: "A" },
+                { text: "Berjalan-jalan sejenak atau memegang benda agar pikiran rileks.", type: "K" }
+            ]},
+            { id: 13, text: "Bagaimana gaya bicara Anda saat menceritakan sebuah cerita?", options: [
+                { text: "Cepat dan menggunakan banyak gambaran visual.", type: "V" },
+                { text: "Ekspresif, menggunakan nada suara dan intonasi yang bervariasi.", type: "A" },
+                { text: "Banyak menggunakan gerakan tubuh dan bahasa tangan.", type: "K" }
+            ]},
+            { id: 14, text: "Ketika membeli pakaian atau sepatu baru, pertimbangan utama saya:", options: [
+                { text: "Model, warna, dan tampilannya saat dipakai di cermin.", type: "V" },
+                { text: "Rekomendasi dan pujian dari orang lain.", type: "A" },
+                { text: "Kenyamanan bahan saat dikenakan dan digerakkan.", type: "K" }
+            ]},
+            { id: 15, text: "Cara terbaik bagi saya untuk mengingat hal penting adalah:", options: [
+                { text: "Membuat catatan berwarna-warni dengan spidol penanda.", type: "V" },
+                { text: "Merekam suara sendiri membaca materi lalu mendengarkannya.", type: "A" },
+                { text: "Menulis ulang catatan sambil berjalan atau memperagakannya.", type: "K" }
+            ]}
+        ];
+
+        class VAKApp {
+            constructor() {
+                this.state = {
+                    name: "",
+                    cls: "",
+                    currentIndex: 0,
+                    answers: [],
+                    lastResult: null
+                };
+                this.loadRecords();
+            }
+
+            loadRecords() {
+                try {
+                    const data = localStorage.getItem('vak_records');
+                    this.records = data ? JSON.parse(data) : [];
+                } catch (e) {
+                    this.records = [];
+                }
+            }
+
+            saveRecords() {
+                try {
+                    localStorage.setItem('vak_records', JSON.stringify(this.records));
+                } catch (e) {
+                    console.error("Storage error:", e);
+                }
+            }
+
+            goHome() {
+                this.state = { name: "", cls: "", currentIndex: 0, answers: [], lastResult: null };
+                const regForm = document.getElementById('form-register');
+                if (regForm) regForm.reset();
+                this.showView('view-home');
+            }
+
+            showView(viewId) {
+                ['view-home', 'view-quiz', 'view-result', 'view-teacher-dashboard'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
+                const targetEl = document.getElementById(viewId);
+                if (targetEl) targetEl.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            startQuiz(e) {
+                e.preventDefault();
+                const nameEl = document.getElementById('reg-name');
+                const classEl = document.getElementById('reg-class');
+                const name = nameEl ? nameEl.value.trim() : "";
+                const cls = classEl ? classEl.value.trim() : "";
+                if (!name || !cls) return;
+
+                this.state.name = name;
+                this.state.cls = cls;
+                this.state.currentIndex = 0;
+                this.state.answers = new Array(questions.length).fill(null);
+
+                this.showView('view-quiz');
+                this.renderQuestion();
+            }
+
+            renderQuestion() {
+                const idx = this.state.currentIndex;
+                const q = questions[idx];
+
+                const counterEl = document.getElementById('quiz-counter');
+                if (counterEl) counterEl.innerText = `Pertanyaan ${idx + 1} dari ${questions.length}`;
+                
+                const infoEl = document.getElementById('quiz-student-info');
+                if (infoEl) infoEl.innerText = `${this.state.name} (${this.state.cls})`;
+                
+                const pbEl = document.getElementById('quiz-progress-bar');
+                if (pbEl) pbEl.style.width = `${((idx + 1) / questions.length) * 100}%`;
+                
+                const textEl = document.getElementById('question-text');
+                if (textEl) textEl.innerText = q.text;
+
+                const optionsContainer = document.getElementById('options-container');
+                if (!optionsContainer) return;
+                optionsContainer.innerHTML = "";
+
+                q.options.forEach((opt) => {
+                    const isChecked = this.state.answers[idx] === opt.type;
+                    const div = document.createElement('label');
+                    div.className = `flex items-start p-4 rounded-2xl border cursor-pointer transition-all ${isChecked ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`;
+                    div.innerHTML = `
+                        <input type="radio" name="q_option" value="${opt.type}" ${isChecked ? 'checked' : ''} onchange="app.selectOption('${opt.type}')" class="mt-1 text-indigo-600 focus:ring-indigo-500">
+                        <span class="ml-3 text-sm text-slate-700 font-medium">${opt.text}</span>
+                    `;
+                    optionsContainer.appendChild(div);
+                });
+
+                const prevBtn = document.getElementById('btn-prev');
+                if (prevBtn) prevBtn.classList.toggle('hidden', idx === 0);
+                
+                const nextBtn = document.getElementById('btn-next');
+                if (nextBtn) {
+                    nextBtn.disabled = this.state.answers[idx] === null;
+                    nextBtn.innerHTML = idx === questions.length - 1 ? '<span>Selesai & Lihat Hasil</span> <i class="fa-solid fa-check ml-1"></i>' : '<span>Selanjutnya</span> <i class="fa-solid fa-arrow-right ml-1 text-xs"></i>';
+                }
+            }
+
+            selectOption(type) {
+                this.state.answers[this.state.currentIndex] = type;
+                const nextBtn = document.getElementById('btn-next');
+                if (nextBtn) nextBtn.disabled = false;
+                this.renderQuestion();
+            }
+
+            prevQuestion() {
+                if (this.state.currentIndex > 0) {
+                    this.state.currentIndex--;
+                    this.renderQuestion();
+                }
+            }
+
+            nextQuestion() {
+                if (this.state.answers[this.state.currentIndex] === null) return;
+
+                if (this.state.currentIndex < questions.length - 1) {
+                    this.state.currentIndex++;
+                    this.renderQuestion();
+                } else {
+                    this.calculateResult();
+                }
+            }
+
+            calculateResult() {
+                let v = 0, a = 0, k = 0;
+                this.state.answers.forEach(ans => {
+                    if (ans === 'V') v++;
+                    if (ans === 'A') a++;
+                    if (ans === 'K') k++;
+                });
+
+                let dominant = "Visual";
+                let desc = "Gaya belajar visual mengandalkan penglihatan. Anda lebih mudah memahami materi melalui gambar, diagram, peta konsep, warna, dan membaca buku teks.";
+                let tips = [
+                    "Gunakan warna berbeda (highlighter) pada catatan penting.",
+                    "Buat peta pikiran (mind mapping) atau diagram alur materi.",
+                    "Perhatikan papan tulis atau slide presentasi guru dengan seksama."
+                ];
+
+                if (a >= v && a >= k) {
+                    dominant = "Auditorial";
+                    desc = "Gaya belajar auditorial mengandalkan pendengaran. Anda lebih mudah menyerap informasi melalui penjelasan lisan, diskusi, mendengarkan rekaman, atau membacanya bersuara.";
+                    tips = [
+                        "Baca ulang catatan penting dengan bersuara atau rekam lalu dengarkan.",
+                        "Aktif berpartisipasi dalam diskusi kelompok dan tanya jawab.",
+                        "Gunakan teknik bercerita atau mnemonik (jembatan keledai) berirama."
+                    ];
+                } else if (k > v && k > a) {
+                    dominant = "Kinestetik";
+                    desc = "Gaya belajar kinestetik mengandalkan keterlibatan fisik dan praktik langsung. Anda lebih mudah paham bila dapat menyentuh, meraba, bergerak, atau melakukan eksperimen.";
+                    tips = [
+                        "Selingi belajar dengan gerakan fisik atau berjalan ringan.",
+                        "Gunakan alat peraga, model, atau eksperimen langsung.",
+                        "Tulis ulang materi sambil mempraktikkan contoh kasusnya."
+                    ];
+                }
+
+                const resultObj = {
+                    id: Date.now(),
+                    date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+                    name: this.state.name,
+                    cls: this.state.cls,
+                    v, a, k,
+                    dominant,
+                    desc,
+                    tips
+                };
+
+                this.records.push(resultObj);
+                this.saveRecords();
+                this.state.lastResult = resultObj;
+
+                this.displayResult(resultObj);
+            }
+
+            displayResult(res) {
+                const elName = document.getElementById('res-name');
+                if (elName) elName.innerText = res.name;
+                
+                const elClass = document.getElementById('res-class');
+                if (elClass) elClass.innerText = res.cls;
+                
+                const elV = document.getElementById('score-v');
+                if (elV) elV.innerText = `${res.v} Poin`;
+                
+                const elA = document.getElementById('score-a');
+                if (elA) elA.innerText = `${res.a} Poin`;
+                
+                const elK = document.getElementById('score-k');
+                if (elK) elK.innerText = `${res.k} Poin`;
+                
+                const elDom = document.getElementById('res-dominant');
+                if (elDom) elDom.innerText = res.dominant;
+                
+                const elDesc = document.getElementById('res-desc');
+                if (elDesc) elDesc.innerText = res.desc;
+
+                const tipsUl = document.getElementById('res-tips');
+                if (tipsUl) {
+                    tipsUl.innerHTML = "";
+                    res.tips.forEach(t => {
+                        const li = document.createElement('li');
+                        li.innerText = t;
+                        tipsUl.appendChild(li);
+                    });
+                }
+
+                this.showView('view-result');
+            }
+
+            downloadStudentPDF() {
+                const element = document.getElementById('print-area-result');
+                if (!element) return;
+                const opt = {
+                    margin:       10,
+                    filename:     `Hasil_VAK_${this.state.lastResult ? this.state.lastResult.name.replace(/\s+/g, '_') : 'Siswa'}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2 },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().from(element).set(opt).save();
+            }
+
+            downloadStudentWord() {
+                if (!this.state.lastResult) return;
+                const r = this.state.lastResult;
+                const doc = new docx.Document({
+                    sections: [{
+                        properties: {},
+                        children: [
+                            new docx.Paragraph({
+                                text: "HASIL ANALISIS GAYA BELAJAR VAK",
+                                heading: docx.HeadingLevel.HEADING_1,
+                                alignment: docx.AlignmentType.CENTER
+                            }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({ text: "Nama Siswa: ", bold: true }),
+                                    new docx.TextRun({ text: r.name }),
+                                ]
+                            }),
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({ text: "Kelas: ", bold: true }),
+                                    new docx.TextRun({ text: r.cls }),
+                                ]
+                            }),
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({ text: "Tanggal Asesmen: ", bold: true }),
+                                    new docx.TextRun({ text: r.date }),
+                                ]
+                            }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({ text: "Perolehan Skor:", bold: true }),
+                                ]
+                            }),
+                            new docx.Paragraph({ text: `- Visual (V): ${r.v} Poin` }),
+                            new docx.Paragraph({ text: `- Auditorial (A): ${r.a} Poin` }),
+                            new docx.Paragraph({ text: `- Kinestetik (K): ${r.k} Poin` }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({ text: "Gaya Belajar Dominan: ", bold: true }),
+                                    new docx.TextRun({ text: r.dominant, bold: true, color: "4F46E5" }),
+                                ]
+                            }),
+                            new docx.Paragraph({ text: r.desc }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({ text: "Rekomendasi Belajar:", bold: true }),
+                                ]
+                            }),
+                            ...r.tips.map(t => new docx.Paragraph({ text: `• ${t}` }))
+                        ]
+                    })
+                });
+
+                docx.Packer.toBlob(doc).then(blob => {
+                    saveAs(blob, `Hasil_VAK_${r.name.replace(/\s+/g, '_')}.docx`);
+                });
+            }
+
+            openTeacherLogin() {
+                const passInput = document.getElementById('teacher-pass');
+                if (passInput) passInput.value = "";
+                const modal = document.getElementById('modal-teacher-login');
+                if (modal) modal.classList.remove('hidden');
+            }
+
+            closeTeacherLogin() {
+                const modal = document.getElementById('modal-teacher-login');
+                if (modal) modal.classList.add('hidden');
+            }
+
+            verifyTeacher(e) {
+                e.preventDefault();
+                const passInput = document.getElementById('teacher-pass');
+                const pass = passInput ? passInput.value : "";
+                if (pass === "gurubk234") {
+                    this.closeTeacherLogin();
+                    this.renderTeacherDashboard();
+                    this.showView('view-teacher-dashboard');
+                } else {
+                    alert("Password Guru BK salah! (Gunakan: gurubk234)");
+                }
+            }
+
+            renderTeacherDashboard() {
+                this.loadRecords();
+                const tbody = document.getElementById('teacher-table-body');
+                if (!tbody) return;
+                tbody.innerHTML = "";
+
+                if (this.records.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center p-6 text-slate-400">Belum ada data asesmen siswa yang tersimpan.</td></tr>`;
+                    return;
+                }
+
+                this.records.forEach((rec, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3.5 text-slate-500">${idx + 1}</td>
+                        <td class="p-3.5 font-semibold text-slate-800">${rec.name}</td>
+                        <td class="p-3.5 text-slate-600">${rec.cls}</td>
+                        <td class="p-3.5 text-center font-medium text-indigo-600">${rec.v}</td>
+                        <td class="p-3.5 text-center font-medium text-sky-600">${rec.a}</td>
+                        <td class="p-3.5 text-center font-medium text-emerald-600">${rec.k}</td>
+                        <td class="p-3.5"><span class="bg-indigo-50 text-indigo-700 font-semibold text-xs px-2.5 py-1 rounded-lg border border-indigo-100">${rec.dominant}</span></td>
+                        <td class="p-3.5 text-center">
+                            <button onclick="app.downloadSingleRecord(${rec.id})" title="Unduh Word" class="text-blue-600 hover:text-blue-800 p-1.5"><i class="fa-solid fa-file-word"></i></button>
+                            <button onclick="app.deleteRecord(${rec.id})" title="Hapus Data" class="text-rose-500 hover:text-rose-700 p-1.5 ml-1"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            deleteRecord(id) {
+                if (confirm("Yakin ingin menghapus data siswa ini?")) {
+                    this.records = this.records.filter(r => r.id !== id);
+                    this.saveRecords();
+                    this.renderTeacherDashboard();
+                }
+            }
+
+            downloadSingleRecord(id) {
+                const r = this.records.find(item => item.id === id);
+                if (!r) return;
+                
+                const doc = new docx.Document({
+                    sections: [{
+                        properties: {},
+                        children: [
+                            new docx.Paragraph({
+                                text: "HASIL ANALISIS GAYA BELAJAR VAK",
+                                heading: docx.HeadingLevel.HEADING_1,
+                                alignment: docx.AlignmentType.CENTER
+                            }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({ children: [new docx.TextRun({ text: "Nama Siswa: ", bold: true }), new docx.TextRun({ text: r.name })] }),
+                            new docx.Paragraph({ children: [new docx.TextRun({ text: "Kelas: ", bold: true }), new docx.TextRun({ text: r.cls })] }),
+                            new docx.Paragraph({ children: [new docx.TextRun({ text: "Tanggal: ", bold: true }), new docx.TextRun({ text: r.date })] }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({ children: [new docx.TextRun({ text: "Skor VAK:", bold: true })] }),
+                            new docx.Paragraph({ text: `- Visual: ${r.v} Poin` }),
+                            new docx.Paragraph({ text: `- Auditorial: ${r.a} Poin` }),
+                            new docx.Paragraph({ text: `- Kinestetik: ${r.k} Poin` }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({ children: [new docx.TextRun({ text: "Gaya Belajar Dominan: ", bold: true }), new docx.TextRun({ text: r.dominant, bold: true })] }),
+                            new docx.Paragraph({ text: r.desc }),
+                            new docx.Paragraph({ text: "" }),
+                            new docx.Paragraph({ children: [new docx.TextRun({ text: "Rekomendasi:", bold: true })] }),
+                            ...r.tips.map(t => new docx.Paragraph({ text: `• ${t}` }))
+                        ]
+                    })
+                });
+
+                docx.Packer.toBlob(doc).then(blob => {
+                    saveAs(blob, `Hasil_VAK_${r.name.replace(/\s+/g, '_')}.docx`);
+                });
+            }
+
+            downloadAllExcel() {
+                if (this.records.length === 0) {
+                    alert("Belum ada data untuk diexport.");
+                    return;
+                }
+                const dataFormatted = this.records.map((r, i) => ({
+                    No: i + 1,
+                    Tanggal: r.date,
+                    "Nama Siswa": r.name,
+                    Kelas: r.cls,
+                    "Visual (V)": r.v,
+                    "Auditorial (A)": r.a,
+                    "Kinestetik (K)": r.k,
+                    "Dominan": r.dominant
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(dataFormatted);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap VAK Siswa");
+                XLSX.writeFile(workbook, "Rekap_Gaya_Belajar_VAK.xlsx");
+            }
+
+            downloadAllWord() {
+                if (this.records.length === 0) {
+                    alert("Belum ada data untuk diexport.");
+                    return;
+                }
+                const children = [
+                    new docx.Paragraph({
+                        text: "REKAPITULASI HASIL GAYA BELAJAR VAK SISWA",
+                        heading: docx.HeadingLevel.HEADING_1,
+                        alignment: docx.AlignmentType.CENTER
+                    }),
+                    new docx.Paragraph({ text: "Layanan Bimbingan dan Konseling Sekolah", alignment: docx.AlignmentType.CENTER }),
+                    new docx.Paragraph({ text: "" })
+                ];
+
+                this.records.forEach((r, i) => {
+                    children.push(
+                        new docx.Paragraph({ children: [new docx.TextRun({ text: `${i + 1}. ${r.name} (${r.cls})`, bold: true, size: 24 })] }),
+                        new docx.Paragraph({ text: `Skor -> Visual: ${r.v} | Auditorial: ${r.a} | Kinestetik: ${r.k}` }),
+                        new docx.Paragraph({ children: [new docx.TextRun({ text: `Dominan: ${r.dominant}`, bold: true, color: "4F46E5" })] }),
+                        new docx.Paragraph({ text: `Deskripsi: ${r.desc}` }),
+                        new docx.Paragraph({ text: "" })
+                    );
+                });
+
+                const doc = new docx.Document({ sections: [{ properties: {}, children }] });
+                docx.Packer.toBlob(doc).then(blob => {
+                    saveAs(blob, "Rekap_Seluruh_Siswa_VAK.docx");
+                });
+            }
+
+            downloadAllPDF() {
+                if (this.records.length === 0) {
+                    alert("Belum ada data untuk diexport.");
+                    return;
+                }
+                let htmlContent = `
+                    <div style="font-family: Arial, sans-serif; padding: 20px;">
+                        <h2 style="text-align: center; color: #312E81;">Rekapitulasi Hasil Gaya Belajar VAK Siswa</h2>
+                        <p style="text-align: center; color: #64748B; font-size: 12px; margin-bottom: 20px;">Layanan Bimbingan dan Konseling</p>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                            <thead>
+                                <tr style="background-color: #EEF2FF; color: #312E81;">
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">No</th>
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">Nama Siswa</th>
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">Kelas</th>
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">V</th>
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">A</th>
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">K</th>
+                                    <th style="border: 1px solid #CBD5E1; padding: 8px;">Dominan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                this.records.forEach((r, i) => {
+                    htmlContent += `
+                        <tr>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px; text-align: center;">${i + 1}</td>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px;">${r.name}</td>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px;">${r.cls}</td>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px; text-align: center;">${r.v}</td>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px; text-align: center;">${r.a}</td>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px; text-align: center;">${r.k}</td>
+                            <td style="border: 1px solid #CBD5E1; padding: 6px; font-weight: bold; color: #4F46E5;">${r.dominant}</td>
+                        </tr>
+                    `;
+                });
+
+                htmlContent += `</tbody></table></div>`;
+
+                const opt = {
+                    margin: 10,
+                    filename: 'Rekap_Semua_Siswa_VAK.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().from(htmlContent).set(opt).save();
+            }
+        }
+
+        const app = new VAKApp();
+    </script>
+</body>
+</html>
